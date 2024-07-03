@@ -12,8 +12,8 @@ image_taichi = ti.field(dtype=ti.u8, shape=(height, width, 3))
 image_taichi.from_numpy(image_np)
 
 
-horizontal_resolution = 1280
-vertical_resolution = 720
+horizontal_resolution = 480
+vertical_resolution = 480
 pixels = ti.field(ti.u8, shape=(horizontal_resolution, vertical_resolution, 3))
 
 
@@ -52,20 +52,15 @@ def raytrace(vector, darkmatter_vector):
 
     #calculation of distortion
     angle_rad = ti.acos(ti.math.dot(vector, darkmatter_vector))
-    C = 100
-    k = 1
-    d = 5000
+    C = np.random.normal(50,25)
+    k = np.random.normal(1,0.1)
+    d = np.random.normal(5000,1000)
     b = ti.abs(d*ti.tan(angle_rad))
     distortion_factor = C * (2 * k**3 - (2 * k**3 + 2 * b * k**2 + b**2 * k) * ti.exp(-b / k)) / b
     rotation_axis = ti.math.cross(vector,darkmatter_vector)
-    # print(rotation_axis)
-    axis = rotation_axis.normalized()
-    # print(axis)
 
-    #print("hellloooo dosto", axis,rotation_axis,vector)
-    #print(angle_rad)
-    #print(distortion_factor*2*np.pi)
-    #print(vector)
+    axis = rotation_axis.normalized()
+
     cos_theta = ti.cos(distortion_factor*2*np.pi)
     sin_theta = ti.sin(distortion_factor*2*np.pi)
 
@@ -78,20 +73,14 @@ def raytrace(vector, darkmatter_vector):
     zVal = (vector[2]+1)/2  # latitude
     xyVector = vector - ti.Vector([0,0,vector[2]])
     xyVector.normalized()
-    angle = ti.atan2(xyVector[1], xyVector[0])+np.pi#ti.acos(ti.math.dot(xyVector, ti.Vector([1,0,0])))
-    #print(image_taichi.shape)
-    #print(phi, lambda_)
+    angle = ti.atan2(xyVector[1], xyVector[0])+np.pi
 
     x = ((angle/(2*np.pi)))*image_taichi.shape[1]
     y = (zVal)*image_taichi.shape[0]
-    # print(image_taichi.shape)
-    # print(x,y)
 
     x = ti.min(ti.max(x, 0), image_taichi.shape[1] - 1)
     y = ti.min(ti.max(y, 0), image_taichi.shape[0] - 1)
 
-    #print(x,y)
-    # Convert coordinates to integers
     shape1 = ti.cast(x, ti.i32)
     shape2 = ti.cast(y, ti.i32)
 
@@ -100,7 +89,7 @@ def raytrace(vector, darkmatter_vector):
 @ti.kernel
 def camera():
     sample_size = 5
-    focal_length = 1
+    focal_length = ti.abs(np.random.normal(1,1))
     viewport_height = 2.0
     
     ratio = pixels.shape[0]/pixels.shape[1]
@@ -112,7 +101,7 @@ def camera():
     #ihat, jhat, khat = ti.Vector([0,-1,0]), ti.Vector([0,0,1]), ti.Vector([1,0,0])
     upperleft = ihat*focal_length - viewport_width*jhat*0.5 + viewport_height*khat*0.5
     pixel_00 = upperleft + 0.5*pixel_delta_u*jhat - 0.5*pixel_delta_v*khat
-    darkmatter_vector = pixel_00 + (pixels.shape[0]*ti.random()*jhat*pixel_delta_u) - (pixels.shape[1]*ti.random()*khat*pixel_delta_v)
+    darkmatter_vector = pixel_00 + (pixels.shape[0]*np.random.normal(0.5,0.1)*jhat*pixel_delta_u) - (pixels.shape[1]*np.random.normal(0.5,0.1)*khat*pixel_delta_v)
     for x, y in ti.ndrange((0, pixels.shape[0]), (0, pixels.shape[1])):
         vector = pixel_00 + x*pixel_delta_u*jhat - y*pixel_delta_v*khat
         color_vector = ti.Vector([0.0, 0.0, 0.0])
